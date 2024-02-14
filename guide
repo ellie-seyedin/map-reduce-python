@@ -1,0 +1,120 @@
+# MapReduce Example with Hadoop on AWS EC2
+
+This guide walks through the process of running a MapReduce job using Hadoop on an AWS EC2 instance. The example demonstrates a basic word count application using custom mapper and reducer scripts written in Python.
+
+## Prerequisites
+
+- AWS account and basic knowledge of EC2 and S3 services
+- Familiarity with Hadoop and HDFS
+- Basic understanding of MapReduce programming model
+- Knowledge of Python programming
+
+## Setup and Configuration
+
+1. **Prepare your EC2 Instance**:
+    - Launch an EC2 instance with Hadoop installed, or install Hadoop on an existing EC2 instance.
+
+2. **Write the Mapper and Reducer Scripts**:
+    - Use `vi` or any text editor to create your mapper and reducer scripts.
+
+    ```bash
+    vi mapper.py
+    vi reducer.py
+    ```
+
+3. **Prepare Your Dataset**:
+    - Create a text file with your input data.
+
+    ```bash
+    vi data.txt
+    ```
+
+4. **Test Locally**:
+    - Before running on Hadoop, test the mapper and reducer locally.
+
+    ```bash
+    cat data.txt | python mapper.py
+    cat data.txt | python mapper.py | sort -k1,1 | python reducer.py
+    ```
+
+5. **Set Execution Permissions**:
+    - Ensure your scripts are executable.
+
+    ```bash
+    chmod 777 mapper.py reducer.py
+    ```
+
+## Running on Hadoop
+
+1. **Upload Data to HDFS**:
+    - Create directories and upload your data file to HDFS.
+
+    ```bash
+    hdfs dfs -mkdir /tmp/USUK30/elaheh
+    hdfs dfs -mkdir /tmp/USUK30/elaheh/data
+    hdfs dfs -put data.txt /tmp/USUK30/elaheh/data/
+    ```
+
+2. **Execute the MapReduce Job**:
+    - Run your MapReduce job using Hadoop Streaming.
+
+    ```bash
+    hadoop jar /opt/cloudera/parcels/CDH/lib/hadoop-mapreduce/hadoop-streaming.jar -files mapper.py,reducer.py -mapper "/usr/bin/python mapper.py" -reducer "/usr/bin/python reducer.py" -input /tmp/USUK30/elaheh/data/data.txt -output /tmp/USUK30/elaheh/output
+    ```
+
+3. **Check the Output**:
+    - After the job completes, check the output in HDFS.
+
+    ```bash
+    hdfs dfs -ls /tmp/USUK30/elaheh/output
+    hdfs dfs -cat /tmp/USUK30/elaheh/output/part-00000
+    ```
+
+## Mapper and Reducer Scripts
+
+- **Mapper Script (`mapper.py`)**:
+
+    ```python
+    #!/usr/bin/env python
+    import sys
+
+    for line in sys.stdin:
+        line = line.strip()
+        words = line.split()
+        for word in words:
+            print "%s\t%s" % (word, 1)
+    ```
+
+- **Reducer Script (`reducer.py`)**:
+
+    ```python
+    #!/usr/bin/env python
+    import sys
+
+    current_word = None
+    current_count = 0
+    word = None
+
+    for line in sys.stdin:
+        line = line.strip()
+        word, count = line.split('\t', 1)
+        try:
+            count = int(count)
+        except ValueError:
+            continue
+
+        if current_word == word:
+            current_count += count
+        else:
+            if current_word:
+                print "%s\t%s" % (current_word, current_count)
+            current_count = count
+            current_word = word
+
+    if current_word == word:
+        print "%s\t%s" % (current_word, current_count)
+    ```
+
+## Conclusion
+
+This guide provides a basic introduction to running MapReduce jobs with Hadoop on AWS EC2, using Python for the mapper and reducer scripts. For more complex applications, consider exploring additional Hadoop features and optimizations.
